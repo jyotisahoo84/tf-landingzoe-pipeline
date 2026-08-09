@@ -16,11 +16,8 @@ permissions:
   contents: read
 
 jobs:
-
   terraform-plan:
-
     name: Terraform Plan
-
     runs-on: ubuntu-latest
 
     defaults:
@@ -38,9 +35,9 @@ jobs:
       - name: Azure Login
         uses: azure/login@v3
         with:
-          client-id: 1fca1d92-f783-450c-8717-5ee79cc6397e
-          tenant-id: 4196a640-eeb4-4d47-8793-18d725e31174
-          subscription-id: 904cfc92-9a73-4439-90cb-6496ce28db13
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Verify Azure Login
         run: az account show
