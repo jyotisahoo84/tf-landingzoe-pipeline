@@ -1,0 +1,74 @@
+name: Terraform Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_VERSION: "1.9.8"
+  WORKING_DIRECTORY: "./environment/Preprod"
+
+jobs:
+
+  terraform:
+    name: Terraform CI
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------------------------
+      # 1. Checkout Repository
+      # --------------------------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # 2. Install Terraform
+      # --------------------------------------------------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # --------------------------------------------------
+      # 3. Check Terraform Version
+      # --------------------------------------------------
+      - name: Terraform Version
+        run: terraform version
+
+      # --------------------------------------------------
+      # 4. Terraform Format Check
+      # --------------------------------------------------
+      - name: Terraform Format Check
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: terraform fmt -check -recursive
+
+      # --------------------------------------------------
+      # 5. Terraform Init
+      # --------------------------------------------------
+      - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: terraform init
+
+      # --------------------------------------------------
+      # 6. Terraform Validate
+      # --------------------------------------------------
+      - name: Terraform Validate
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: terraform validate
+
+      # --------------------------------------------------
+      # 7. Terraform Plan
+      # --------------------------------------------------
+      - name: Terraform Plan
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: terraform plan -out=tfplan
