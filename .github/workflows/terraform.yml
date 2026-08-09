@@ -9,31 +9,33 @@ on:
     branches:
       - main
 
-jobs:
+  workflow_dispatch:
 
+jobs:
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
 
     defaults:
-        run:
-            working-directory: Terraform_Module_Security_Scan_09082026/environment/Preprod
+      run:
+        working-directory: Terraform_Module_Security_Scan_09082026/environment/Preprod
 
     steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
 
-        - name: Setup Terraform
-          uses: hashicorp/setup-terraform@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-        - name: Terraform Format
-          run: terraform fmt -check -recursive
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
-        - name: Terraform Init
-          run: terraform init
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
 
-        - name: Terraform validate
-          run: terraform validate
+      - name: Terraform Init
+        run: terraform init -input=false
 
-        - name: Terraform Plan
-          run: terraform plan
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -input=false
