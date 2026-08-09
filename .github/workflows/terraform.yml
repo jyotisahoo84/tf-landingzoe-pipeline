@@ -1,0 +1,39 @@
+name: Terraform Pipeline
+
+on:
+  push:
+    branches:
+      - "**"
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+
+    defaults:
+        run:
+            working-directory: Terraform_Module_Security_Scan_09082026/environment/Preprod
+
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Setup Terraform
+          uses: hashicorp/setup-terraform@v3
+
+        - name: Terraform Format
+          run: terraform fmt -check -recursive
+
+        - name: Terraform Init
+          run: terraform init
+
+        - name: Terraform validate
+          run: terraform validate
+
+        - name: Terraform Plan
+          run: terraform plan
