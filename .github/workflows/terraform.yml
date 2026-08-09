@@ -11,9 +11,16 @@ on:
 
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
+
   terraform-plan:
+
     name: Terraform Plan
+
     runs-on: ubuntu-latest
 
     defaults:
@@ -27,6 +34,16 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: 1fca1d92-f783-450c-8717-5ee79cc6397e
+          tenant-id: 4196a640-eeb4-4d47-8793-18d725e31174
+          subscription-id: 904cfc92-9a73-4439-90cb-6496ce28db13
+
+      - name: Verify Azure Login
+        run: az account show
 
       - name: Terraform Format
         run: terraform fmt -check -recursive
