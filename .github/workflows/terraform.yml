@@ -17,14 +17,14 @@ jobs:
 
     defaults:
         run:
-            working-directory: environments\Preprod
+            working-directory: environment/Preprod
 
     steps:
         - name: Checkout code
           uses: actions/checkout@v4
 
         - name: Setup Terraform
-          uses: hashicurp/setup-terraform@v3
+          uses: hashicorp/setup-terraform@v3
 
         - name: Terraform Format
           run: terraform fmt -check -recursive
