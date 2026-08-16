@@ -20,7 +20,7 @@ vir_net = {
     name          = "vnet-prod"
     rg_name       = "rg-prod"
     location      = "centralindia"
-    address_space = ["10.0.0./16"]
+    address_space = ["10.0.0.0/16"]
   }
 }
 
