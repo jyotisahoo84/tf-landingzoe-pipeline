@@ -30,7 +30,7 @@ module "public_ip" {
 
 module "network_interface" {
 
-  depends_on = [module.resource_grp]
+  depends_on = [module.resource_grp, module.snets]
   source     = "../../modules/network_interface"
   net_int    = var.net_int
 
@@ -44,14 +44,14 @@ module "net_sec_grp" {
 }
 
 module "bastion" {
-  depends_on = [module.public_ip]
+  depends_on = [module.public_ip, module.snets]
   source     = "../../modules/bastion"
   bastion    = var.bastion
 
 }
 
 module "ngw" {
-  depends_on = [module.resource_grp]
+  depends_on = [module.resource_grp, module.public_ip, module.snets]
   source     = "../../modules/nat_gw"
   natgw      = var.natgw
 
@@ -64,7 +64,7 @@ module "vir_machine" {
 }
 
 module "appgw" {
-  depends_on = [module.public_ip]
+  depends_on = [module.public_ip, module.snets, module.network_interface, module.vir_machine]
   source     = "../../modules/app_gw"
   appgw      = var.appgw
 }
