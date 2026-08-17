@@ -37,7 +37,7 @@ module "network_interface" {
 }
 
 module "net_sec_grp" {
-  depends_on = [module.resource_grp]
+  depends_on = [module.resource_grp, module.snets]
   source     = "../../modules/netowrk_security_group"
   net_sec    = var.net_sec
 
