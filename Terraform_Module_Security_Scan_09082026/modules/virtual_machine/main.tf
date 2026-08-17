@@ -15,7 +15,7 @@ resource "azurerm_linux_virtual_machine" "linux_vms" {
     os_disk {
         name                 = each.value.os_disk
         caching              = "ReadWrite"
-        storage_account_type = "StandardSSD_LRS"
+        storage_account_type = "Premium_LRS"
 
         }
 
