@@ -17,6 +17,7 @@ variables:
   terraformVersion: '1.9.8'
   azureServiceConnection: 'azure-terraform-connection'
 
+stages:
 
 # ============================================================
 # TERRAFORM PLAN
@@ -27,149 +28,146 @@ variables:
 #   3. main branch
 # ============================================================
 
-stages:
-
 - stage: TerraformPlan
   displayName: 'Terraform Plan'
 
   jobs:
-
-  - job: TerraformPlan
-    displayName: 'Terraform Plan'
-
-    steps:
-
-    # --------------------------------------------------------
-    # Checkout Code
-    # --------------------------------------------------------
-
-    - checkout: self
-      displayName: 'Checkout Code'
-
-    # --------------------------------------------------------
-    # Install Terraform
-    # --------------------------------------------------------
-
-    - task: AzureCLI@2
-      displayName: 'Install Terraform'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          set -e
-
-          echo "Installing Terraform $(terraformVersion)..."
-
-          sudo apt-get update
-          sudo apt-get install -y unzip wget
-
-          wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
-
-          unzip -o terraform_$(terraformVersion)_linux_amd64.zip
-
-          sudo mv terraform /usr/local/bin/terraform
-
-          terraform version
-
-    # --------------------------------------------------------
-    # Azure Login Check
-    # --------------------------------------------------------
-
-    - task: AzureCLI@2
-      displayName: 'Check Azure Login'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          set -e
-
-          echo "Azure account information:"
-          az account show
-
-    # --------------------------------------------------------
-    # Terraform Init
-    # --------------------------------------------------------
-
-    - task: AzureCLI@2
-      displayName: 'Terraform Init'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        workingDirectory: '$(terraformWorkingDirectory)'
-        inlineScript: |
-          set -e
-
-          terraform init -input=false
-
-    # --------------------------------------------------------
-    # Terraform Validate
-    # --------------------------------------------------------
-
-    - task: AzureCLI@2
-      displayName: 'Terraform Validate'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        workingDirectory: '$(terraformWorkingDirectory)'
-        inlineScript: |
-          set -e
-
-          terraform validate
-
-    # --------------------------------------------------------
-    # Terraform Format Check
-    # --------------------------------------------------------
-
-    - task: AzureCLI@2
-      displayName: 'Terraform Format Check'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        workingDirectory: '$(terraformWorkingDirectory)'
-        inlineScript: |
-          set -e
-
-          terraform fmt -check -recursive
-
-    # --------------------------------------------------------
-    # Terraform Plan
-    #
-    # Save the plan as tfplan so that the exact same plan
-    # can be used by Terraform Apply.
-    # --------------------------------------------------------
-
-    - task: AzureCLI@2
+    - job: TerraformPlan
       displayName: 'Terraform Plan'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        workingDirectory: '$(terraformWorkingDirectory)'
-        inlineScript: |
-          set -e
 
-          terraform plan \
-            -input=false \
-            -var-file=terraform.tfvars \
-            -out=tfplan
+      steps:
 
-    # --------------------------------------------------------
-    # Publish Terraform Plan
-    #
-    # The Apply stage runs on a different job/agent, so the
-    # plan file must be published as a pipeline artifact.
-    # --------------------------------------------------------
+        # ----------------------------------------------------
+        # Checkout
+        # ----------------------------------------------------
 
-    - task: PublishPipelineArtifact@1
-      displayName: 'Publish Terraform Plan'
-      inputs:
-        targetPath: '$(terraformWorkingDirectory)/tfplan'
-        artifact: 'terraform-plan'
+        - checkout: self
+          displayName: 'Checkout Code'
+
+        # ----------------------------------------------------
+        # Install Terraform
+        # ----------------------------------------------------
+
+        - task: AzureCLI@2
+          displayName: 'Install Terraform'
+          inputs:
+            azureSubscription: '$(azureServiceConnection)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              set -e
+
+              echo "Installing Terraform $(terraformVersion)..."
+
+              sudo apt-get update
+              sudo apt-get install -y unzip wget
+
+              wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
+
+              unzip -o terraform_$(terraformVersion)_linux_amd64.zip
+
+              sudo mv terraform /usr/local/bin/terraform
+
+              terraform version
+
+        # ----------------------------------------------------
+        # Azure Login Check
+        # ----------------------------------------------------
+
+        - task: AzureCLI@2
+          displayName: 'Check Azure Login'
+          inputs:
+            azureSubscription: '$(azureServiceConnection)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              set -e
+
+              echo "Azure account information:"
+              az account show
+
+        # ----------------------------------------------------
+        # Terraform Init
+        # ----------------------------------------------------
+
+        - task: AzureCLI@2
+          displayName: 'Terraform Init'
+          inputs:
+            azureSubscription: '$(azureServiceConnection)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            workingDirectory: '$(terraformWorkingDirectory)'
+            inlineScript: |
+              set -e
+
+              terraform init -input=false
+
+        # ----------------------------------------------------
+        # Terraform Validate
+        # ----------------------------------------------------
+
+        - task: AzureCLI@2
+          displayName: 'Terraform Validate'
+          inputs:
+            azureSubscription: '$(azureServiceConnection)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            workingDirectory: '$(terraformWorkingDirectory)'
+            inlineScript: |
+              set -e
+
+              terraform validate
+
+        # ----------------------------------------------------
+        # Terraform Format Check
+        # ----------------------------------------------------
+
+        - task: AzureCLI@2
+          displayName: 'Terraform Format Check'
+          inputs:
+            azureSubscription: '$(azureServiceConnection)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            workingDirectory: '$(terraformWorkingDirectory)'
+            inlineScript: |
+              set -e
+
+              terraform fmt -check -recursive
+
+        # ----------------------------------------------------
+        # Terraform Plan
+        #
+        # Save the plan as tfplan so that the exact same plan
+        # can be used by Terraform Apply.
+        # ----------------------------------------------------
+
+        - task: AzureCLI@2
+          displayName: 'Terraform Plan'
+          inputs:
+            azureSubscription: '$(azureServiceConnection)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            workingDirectory: '$(terraformWorkingDirectory)'
+            inlineScript: |
+              set -e
+
+              terraform plan \
+                -input=false \
+                -var-file=terraform.tfvars \
+                -out=tfplan
+
+        # ----------------------------------------------------
+        # Publish Terraform Plan
+        #
+        # Apply runs on a different job/agent, so publish the
+        # plan as a pipeline artifact.
+        # ----------------------------------------------------
+
+        - task: PublishPipelineArtifact@1
+          displayName: 'Publish Terraform Plan'
+          inputs:
+            targetPath: '$(terraformWorkingDirectory)/tfplan'
+            artifact: 'terraform-plan'
 
 
 # ============================================================
@@ -182,10 +180,9 @@ stages:
 #
 # Therefore:
 #
-#   feature/*  -> Plan only
-#   PR -> main  -> Plan only
-#   main       -> Plan + Apply
-#
+#   feature/* -> Plan only
+#   PR -> main -> Plan only
+#   main -> Plan + Apply
 # ============================================================
 
 - stage: TerraformApply
@@ -201,119 +198,118 @@ stages:
 
   jobs:
 
-  - deployment: TerraformApply
-    displayName: 'Terraform Apply'
+    - deployment: TerraformApply
+      displayName: 'Terraform Apply'
 
-    # --------------------------------------------------------
-    # Azure DevOps Environment
-    #
-    # If "production" has Approval and Checks configured,
-    # Azure DevOps will wait for approval before starting
-    # the deployment.
-    # --------------------------------------------------------
+      # ------------------------------------------------------
+      # Azure DevOps Environment
+      #
+      # Configure approval/checks on the "production"
+      # environment if manual approval is required.
+      # ------------------------------------------------------
 
-    environment: 'production'
+      environment: 'production'
 
-    strategy:
-      runOnce:
-        deploy:
+      strategy:
+        runOnce:
+          deploy:
+            steps:
 
-          steps:
+              # ------------------------------------------------
+              # Checkout Code
+              # ------------------------------------------------
 
-          # --------------------------------------------------
-          # Checkout Code
-          # --------------------------------------------------
+              - checkout: self
+                displayName: 'Checkout Code'
 
-          - checkout: self
-            displayName: 'Checkout Code'
+              # ------------------------------------------------
+              # Download Terraform Plan
+              # ------------------------------------------------
 
-          # --------------------------------------------------
-          # Download Terraform Plan
-          # --------------------------------------------------
+              - download: current
+                artifact: terraform-plan
+                displayName: 'Download Terraform Plan'
 
-          - download: current
-            artifact: terraform-plan
-            displayName: 'Download Terraform Plan'
+              # ------------------------------------------------
+              # Install Terraform
+              # ------------------------------------------------
 
-          # --------------------------------------------------
-          # Install Terraform
-          # --------------------------------------------------
+              - task: AzureCLI@2
+                displayName: 'Install Terraform'
+                inputs:
+                  azureSubscription: '$(azureServiceConnection)'
+                  scriptType: 'bash'
+                  scriptLocation: 'inlineScript'
+                  inlineScript: |
+                    set -e
 
-          - task: AzureCLI@2
-            displayName: 'Install Terraform'
-            inputs:
-              azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                set -e
+                    echo "Installing Terraform $(terraformVersion)..."
 
-                echo "Installing Terraform $(terraformVersion)..."
+                    sudo apt-get update
+                    sudo apt-get install -y unzip wget
 
-                sudo apt-get update
-                sudo apt-get install -y unzip wget
+                    wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
 
-                wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
+                    unzip -o terraform_$(terraformVersion)_linux_amd64.zip
 
-                unzip -o terraform_$(terraformVersion)_linux_amd64.zip
+                    sudo mv terraform /usr/local/bin/terraform
 
-                sudo mv terraform /usr/local/bin/terraform
+                    terraform version
 
-                terraform version
+              # ------------------------------------------------
+              # Azure Login Check
+              # ------------------------------------------------
 
-          # --------------------------------------------------
-          # Azure Login Check
-          # --------------------------------------------------
+              - task: AzureCLI@2
+                displayName: 'Check Azure Login'
+                inputs:
+                  azureSubscription: '$(azureServiceConnection)'
+                  scriptType: 'bash'
+                  scriptLocation: 'inlineScript'
+                  inlineScript: |
+                    set -e
 
-          - task: AzureCLI@2
-            displayName: 'Check Azure Login'
-            inputs:
-              azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                set -e
+                    echo "Azure account information:"
+                    az account show
 
-                echo "Azure account information:"
-                az account show
+              # ------------------------------------------------
+              # Terraform Init
+              # ------------------------------------------------
 
-          # --------------------------------------------------
-          # Terraform Init
-          # --------------------------------------------------
+              - task: AzureCLI@2
+                displayName: 'Terraform Init'
+                inputs:
+                  azureSubscription: '$(azureServiceConnection)'
+                  scriptType: 'bash'
+                  scriptLocation: 'inlineScript'
+                  workingDirectory: '$(terraformWorkingDirectory)'
+                  inlineScript: |
+                    set -e
 
-          - task: AzureCLI@2
-            displayName: 'Terraform Init'
-            inputs:
-              azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              workingDirectory: '$(terraformWorkingDirectory)'
-              inlineScript: |
-                set -e
+                    terraform init -input=false
 
-                terraform init -input=false
+              # ------------------------------------------------
+              # Terraform Apply
+              #
+              # Apply the EXACT plan generated during the
+              # Terraform Plan stage.
+              # ------------------------------------------------
 
-          # --------------------------------------------------
-          # Terraform Apply
-          #
-          # Apply the EXACT plan generated in the Plan stage.
-          # --------------------------------------------------
+              - task: AzureCLI@2
+                displayName: 'Terraform Apply'
+                inputs:
+                  azureSubscription: '$(azureServiceConnection)'
+                  scriptType: 'bash'
+                  scriptLocation: 'inlineScript'
+                  workingDirectory: '$(terraformWorkingDirectory)'
+                  inlineScript: |
+                    set -e
 
-          - task: AzureCLI@2
-            displayName: 'Terraform Apply'
-            inputs:
-              azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              workingDirectory: '$(terraformWorkingDirectory)'
-              inlineScript: |
-                set -e
+                    echo "Applying Terraform plan..."
 
-                echo "Applying Terraform plan..."
+                    terraform apply \
+                      -input=false \
+                      -auto-approve \
+                      "$(Pipeline.Workspace)/terraform-plan/tfplan"
 
-                terraform apply \
-                  -input=false \
-                  -auto-approve \
-                  "$(Pipeline.Workspace)/terraform-plan/tfplan"
-
-                echo "Terraform Apply completed successfully."
+                    echo "Terraform Apply completed successfully."
