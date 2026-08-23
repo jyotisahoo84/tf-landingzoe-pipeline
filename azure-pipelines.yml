@@ -1,0 +1,170 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  terraformWorkingDirectory: 'Terraform_Module_Security_Scan_09082026/environment/Preprod'
+  terraformVersion: '1.9.8'
+  azureServiceConnection: 'azure-terraform-connection'
+
+stages:
+
+# ============================================================
+# TERRAFORM PLAN
+# ============================================================
+
+- stage: TerraformPlan
+  displayName: 'Terraform Plan'
+
+  jobs:
+
+  - job: TerraformPlan
+    displayName: 'Terraform Plan'
+
+    steps:
+
+    # --------------------------------------------------------
+    # Checkout
+    # --------------------------------------------------------
+
+    - checkout: self
+
+    # --------------------------------------------------------
+    # Install Terraform
+    # --------------------------------------------------------
+
+    - task: TerraformInstaller@1
+      displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: '$(terraformVersion)'
+
+    # --------------------------------------------------------
+    # Terraform Init
+    # --------------------------------------------------------
+
+    - task: TerraformCLI@2
+      displayName: 'Terraform Init'
+      inputs:
+        command: 'init'
+        workingDirectory: '$(terraformWorkingDirectory)'
+        backendType: 'azurerm'
+        backendAzureRmSubscriptionId: 'YOUR-SUBSCRIPTION-ID'
+        backendAzureRmResourceGroupName: 'YOUR-TFSTATE-RG'
+        backendAzureRmStorageAccountName: 'YOUR-TFSTATE-STORAGE'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'terraform.tfstate'
+
+    # --------------------------------------------------------
+    # Terraform Validate
+    # --------------------------------------------------------
+
+    - task: TerraformCLI@2
+      displayName: 'Terraform Validate'
+      inputs:
+        command: 'validate'
+        workingDirectory: '$(terraformWorkingDirectory)'
+
+    # --------------------------------------------------------
+    # Terraform Plan
+    # --------------------------------------------------------
+
+    - task: TerraformCLI@2
+      displayName: 'Terraform Plan'
+      inputs:
+        command: 'plan'
+        workingDirectory: '$(terraformWorkingDirectory)'
+        environmentServiceNameAzureRM: '$(azureServiceConnection)'
+        commandOptions: '-var-file=terraform.tfvars'
+
+
+# ============================================================
+# TERRAFORM APPLY
+# ONLY MAIN BRANCH
+# ============================================================
+
+- stage: TerraformApply
+  displayName: 'Terraform Apply'
+
+  dependsOn: TerraformPlan
+
+  condition: and(
+    succeeded(),
+    eq(variables['Build.SourceBranch'], 'refs/heads/main'),
+    eq(variables['Build.Reason'], 'IndividualCI')
+  )
+
+  jobs:
+
+  - deployment: TerraformApply
+    displayName: 'Terraform Apply'
+
+    environment: 'production'
+
+    strategy:
+      runOnce:
+
+        deploy:
+
+          steps:
+
+          # --------------------------------------------------
+          # Checkout
+          # --------------------------------------------------
+
+          - checkout: self
+
+          # --------------------------------------------------
+          # Install Terraform
+          # --------------------------------------------------
+
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          # --------------------------------------------------
+          # Terraform Init
+          # --------------------------------------------------
+
+          - task: TerraformCLI@2
+            displayName: 'Terraform Init'
+            inputs:
+              command: 'init'
+              workingDirectory: '$(terraformWorkingDirectory)'
+              backendType: 'azurerm'
+              backendAzureRmSubscriptionId: 'YOUR-SUBSCRIPTION-ID'
+              backendAzureRmResourceGroupName: 'YOUR-TFSTATE-RG'
+              backendAzureRmStorageAccountName: 'YOUR-TFSTATE-STORAGE'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'terraform.tfstate'
+
+          # --------------------------------------------------
+          # Terraform Validate
+          # --------------------------------------------------
+
+          - task: TerraformCLI@2
+            displayName: 'Terraform Validate'
+            inputs:
+              command: 'validate'
+              workingDirectory: '$(terraformWorkingDirectory)'
+
+          # --------------------------------------------------
+          # Terraform Apply
+          # --------------------------------------------------
+
+          - task: TerraformCLI@2
+            displayName: 'Terraform Apply'
+            inputs:
+              command: 'apply'
+              workingDirectory: '$(terraformWorkingDirectory)'
+              environmentServiceNameAzureRM: '$(azureServiceConnection)'
+              commandOptions: '-var-file=terraform.tfvars -auto-approve'
