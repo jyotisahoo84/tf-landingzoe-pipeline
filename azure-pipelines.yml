@@ -26,30 +26,18 @@ stages:
   displayName: 'Terraform Plan'
 
   jobs:
-
   - job: TerraformPlan
     displayName: 'Terraform Plan'
 
     steps:
 
-    # --------------------------------------------------------
-    # Checkout
-    # --------------------------------------------------------
-
     - checkout: self
-
-    # --------------------------------------------------------
-    # Install Terraform
-    # --------------------------------------------------------
+      displayName: 'Checkout Code'
 
     - task: TerraformInstaller@1
       displayName: 'Install Terraform'
       inputs:
         terraformVersion: '$(terraformVersion)'
-
-    # --------------------------------------------------------
-    # Terraform Init
-    # --------------------------------------------------------
 
     - task: TerraformCLI@2
       displayName: 'Terraform Init'
@@ -63,19 +51,11 @@ stages:
         backendAzureRmContainerName: 'tfstate'
         backendAzureRmKey: 'terraform.tfstate'
 
-    # --------------------------------------------------------
-    # Terraform Validate
-    # --------------------------------------------------------
-
     - task: TerraformCLI@2
       displayName: 'Terraform Validate'
       inputs:
         command: 'validate'
         workingDirectory: '$(terraformWorkingDirectory)'
-
-    # --------------------------------------------------------
-    # Terraform Plan
-    # --------------------------------------------------------
 
     - task: TerraformCLI@2
       displayName: 'Terraform Plan'
@@ -88,7 +68,6 @@ stages:
 
 # ============================================================
 # TERRAFORM APPLY
-# ONLY MAIN BRANCH
 # ============================================================
 
 - stage: TerraformApply
@@ -96,14 +75,9 @@ stages:
 
   dependsOn: TerraformPlan
 
-  condition: and(
-    succeeded(),
-    eq(variables['Build.SourceBranch'], 'refs/heads/main'),
-    eq(variables['Build.Reason'], 'IndividualCI')
-  )
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
 
   jobs:
-
   - deployment: TerraformApply
     displayName: 'Terraform Apply'
 
@@ -111,29 +85,17 @@ stages:
 
     strategy:
       runOnce:
-
         deploy:
 
           steps:
 
-          # --------------------------------------------------
-          # Checkout
-          # --------------------------------------------------
-
           - checkout: self
-
-          # --------------------------------------------------
-          # Install Terraform
-          # --------------------------------------------------
+            displayName: 'Checkout Code'
 
           - task: TerraformInstaller@1
             displayName: 'Install Terraform'
             inputs:
               terraformVersion: '$(terraformVersion)'
-
-          # --------------------------------------------------
-          # Terraform Init
-          # --------------------------------------------------
 
           - task: TerraformCLI@2
             displayName: 'Terraform Init'
@@ -147,19 +109,11 @@ stages:
               backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: 'terraform.tfstate'
 
-          # --------------------------------------------------
-          # Terraform Validate
-          # --------------------------------------------------
-
           - task: TerraformCLI@2
             displayName: 'Terraform Validate'
             inputs:
               command: 'validate'
               workingDirectory: '$(terraformWorkingDirectory)'
-
-          # --------------------------------------------------
-          # Terraform Apply
-          # --------------------------------------------------
 
           - task: TerraformCLI@2
             displayName: 'Terraform Apply'
