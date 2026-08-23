@@ -2,6 +2,7 @@ trigger:
   branches:
     include:
       - main
+      - feature/*
 
 pr:
   branches:
@@ -16,23 +17,30 @@ variables:
   terraformVersion: '1.9.8'
   azureServiceConnection: 'azure-terraform-connection'
 
-stages:
 
 # ============================================================
 # TERRAFORM PLAN
+#
+# Runs on:
+#   1. feature/* branches
+#   2. Pull Requests targeting main
+#   3. main branch
 # ============================================================
+
+stages:
 
 - stage: TerraformPlan
   displayName: 'Terraform Plan'
 
   jobs:
+
   - job: TerraformPlan
     displayName: 'Terraform Plan'
 
     steps:
 
     # --------------------------------------------------------
-    # Checkout
+    # Checkout Code
     # --------------------------------------------------------
 
     - checkout: self
@@ -75,6 +83,8 @@ stages:
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
+          set -e
+
           echo "Azure account information:"
           az account show
 
@@ -90,6 +100,8 @@ stages:
         scriptLocation: 'inlineScript'
         workingDirectory: '$(terraformWorkingDirectory)'
         inlineScript: |
+          set -e
+
           terraform init -input=false
 
     # --------------------------------------------------------
@@ -104,6 +116,8 @@ stages:
         scriptLocation: 'inlineScript'
         workingDirectory: '$(terraformWorkingDirectory)'
         inlineScript: |
+          set -e
+
           terraform validate
 
     # --------------------------------------------------------
@@ -118,10 +132,15 @@ stages:
         scriptLocation: 'inlineScript'
         workingDirectory: '$(terraformWorkingDirectory)'
         inlineScript: |
+          set -e
+
           terraform fmt -check -recursive
 
     # --------------------------------------------------------
     # Terraform Plan
+    #
+    # Save the plan as tfplan so that the exact same plan
+    # can be used by Terraform Apply.
     # --------------------------------------------------------
 
     - task: AzureCLI@2
@@ -132,14 +151,41 @@ stages:
         scriptLocation: 'inlineScript'
         workingDirectory: '$(terraformWorkingDirectory)'
         inlineScript: |
+          set -e
+
           terraform plan \
             -input=false \
-            -var-file=terraform.tfvars
+            -var-file=terraform.tfvars \
+            -out=tfplan
+
+    # --------------------------------------------------------
+    # Publish Terraform Plan
+    #
+    # The Apply stage runs on a different job/agent, so the
+    # plan file must be published as a pipeline artifact.
+    # --------------------------------------------------------
+
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish Terraform Plan'
+      inputs:
+        targetPath: '$(terraformWorkingDirectory)/tfplan'
+        artifact: 'terraform-plan'
 
 
 # ============================================================
 # TERRAFORM APPLY
-# ONLY MAIN BRANCH
+#
+# Apply ONLY runs when:
+#
+#   1. Terraform Plan succeeded
+#   2. Build.SourceBranch is exactly main
+#
+# Therefore:
+#
+#   feature/*  -> Plan only
+#   PR -> main  -> Plan only
+#   main       -> Plan + Apply
+#
 # ============================================================
 
 - stage: TerraformApply
@@ -148,12 +194,23 @@ stages:
   dependsOn:
     - TerraformPlan
 
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  condition: and(
+    succeeded(),
+    eq(variables['Build.SourceBranch'], 'refs/heads/main')
+  )
 
   jobs:
 
   - deployment: TerraformApply
     displayName: 'Terraform Apply'
+
+    # --------------------------------------------------------
+    # Azure DevOps Environment
+    #
+    # If "production" has Approval and Checks configured,
+    # Azure DevOps will wait for approval before starting
+    # the deployment.
+    # --------------------------------------------------------
 
     environment: 'production'
 
@@ -164,11 +221,19 @@ stages:
           steps:
 
           # --------------------------------------------------
-          # Checkout
+          # Checkout Code
           # --------------------------------------------------
 
           - checkout: self
             displayName: 'Checkout Code'
+
+          # --------------------------------------------------
+          # Download Terraform Plan
+          # --------------------------------------------------
+
+          - download: current
+            artifact: terraform-plan
+            displayName: 'Download Terraform Plan'
 
           # --------------------------------------------------
           # Install Terraform
@@ -207,6 +272,9 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                set -e
+
+                echo "Azure account information:"
                 az account show
 
           # --------------------------------------------------
@@ -221,24 +289,14 @@ stages:
               scriptLocation: 'inlineScript'
               workingDirectory: '$(terraformWorkingDirectory)'
               inlineScript: |
+                set -e
+
                 terraform init -input=false
 
           # --------------------------------------------------
-          # Terraform Validate
-          # --------------------------------------------------
-
-          - task: AzureCLI@2
-            displayName: 'Terraform Validate'
-            inputs:
-              azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              workingDirectory: '$(terraformWorkingDirectory)'
-              inlineScript: |
-                terraform validate
-
-          # --------------------------------------------------
           # Terraform Apply
+          #
+          # Apply the EXACT plan generated in the Plan stage.
           # --------------------------------------------------
 
           - task: AzureCLI@2
@@ -249,7 +307,13 @@ stages:
               scriptLocation: 'inlineScript'
               workingDirectory: '$(terraformWorkingDirectory)'
               inlineScript: |
+                set -e
+
+                echo "Applying Terraform plan..."
+
                 terraform apply \
                   -input=false \
                   -auto-approve \
-                  -var-file=terraform.tfvars
+                  "$(Pipeline.Workspace)/terraform-plan/tfplan"
+
+                echo "Terraform Apply completed successfully."
