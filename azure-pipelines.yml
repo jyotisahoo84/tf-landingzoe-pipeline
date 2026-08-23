@@ -31,53 +31,127 @@ stages:
 
     steps:
 
+    # --------------------------------------------------------
+    # Checkout
+    # --------------------------------------------------------
+
     - checkout: self
       displayName: 'Checkout Code'
 
-    - task: TerraformInstaller@1
+    # --------------------------------------------------------
+    # Install Terraform
+    # --------------------------------------------------------
+
+    - task: AzureCLI@2
       displayName: 'Install Terraform'
       inputs:
-        terraformVersion: '$(terraformVersion)'
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          set -e
 
-    - task: TerraformCLI@2
+          echo "Installing Terraform $(terraformVersion)..."
+
+          sudo apt-get update
+          sudo apt-get install -y unzip wget
+
+          wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
+
+          unzip -o terraform_$(terraformVersion)_linux_amd64.zip
+
+          sudo mv terraform /usr/local/bin/terraform
+
+          terraform version
+
+    # --------------------------------------------------------
+    # Azure Login Check
+    # --------------------------------------------------------
+
+    - task: AzureCLI@2
+      displayName: 'Check Azure Login'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Azure account information:"
+          az account show
+
+    # --------------------------------------------------------
+    # Terraform Init
+    # --------------------------------------------------------
+
+    - task: AzureCLI@2
       displayName: 'Terraform Init'
       inputs:
-        command: 'init'
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
         workingDirectory: '$(terraformWorkingDirectory)'
-        backendType: 'azurerm'
-        backendAzureRmSubscriptionId: 'YOUR-SUBSCRIPTION-ID'
-        backendAzureRmResourceGroupName: 'YOUR-TFSTATE-RG'
-        backendAzureRmStorageAccountName: 'YOUR-TFSTATE-STORAGE'
-        backendAzureRmContainerName: 'tfstate'
-        backendAzureRmKey: 'terraform.tfstate'
+        inlineScript: |
+          terraform init -input=false
 
-    - task: TerraformCLI@2
+    # --------------------------------------------------------
+    # Terraform Validate
+    # --------------------------------------------------------
+
+    - task: AzureCLI@2
       displayName: 'Terraform Validate'
       inputs:
-        command: 'validate'
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
         workingDirectory: '$(terraformWorkingDirectory)'
+        inlineScript: |
+          terraform validate
 
-    - task: TerraformCLI@2
+    # --------------------------------------------------------
+    # Terraform Format Check
+    # --------------------------------------------------------
+
+    - task: AzureCLI@2
+      displayName: 'Terraform Format Check'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        workingDirectory: '$(terraformWorkingDirectory)'
+        inlineScript: |
+          terraform fmt -check -recursive
+
+    # --------------------------------------------------------
+    # Terraform Plan
+    # --------------------------------------------------------
+
+    - task: AzureCLI@2
       displayName: 'Terraform Plan'
       inputs:
-        command: 'plan'
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
         workingDirectory: '$(terraformWorkingDirectory)'
-        environmentServiceNameAzureRM: '$(azureServiceConnection)'
-        commandOptions: '-var-file=terraform.tfvars'
+        inlineScript: |
+          terraform plan \
+            -input=false \
+            -var-file=terraform.tfvars
 
 
 # ============================================================
 # TERRAFORM APPLY
+# ONLY MAIN BRANCH
 # ============================================================
 
 - stage: TerraformApply
   displayName: 'Terraform Apply'
 
-  dependsOn: TerraformPlan
+  dependsOn:
+    - TerraformPlan
 
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
 
   jobs:
+
   - deployment: TerraformApply
     displayName: 'Terraform Apply'
 
@@ -89,36 +163,93 @@ stages:
 
           steps:
 
+          # --------------------------------------------------
+          # Checkout
+          # --------------------------------------------------
+
           - checkout: self
             displayName: 'Checkout Code'
 
-          - task: TerraformInstaller@1
+          # --------------------------------------------------
+          # Install Terraform
+          # --------------------------------------------------
+
+          - task: AzureCLI@2
             displayName: 'Install Terraform'
             inputs:
-              terraformVersion: '$(terraformVersion)'
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -e
 
-          - task: TerraformCLI@2
+                echo "Installing Terraform $(terraformVersion)..."
+
+                sudo apt-get update
+                sudo apt-get install -y unzip wget
+
+                wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
+
+                unzip -o terraform_$(terraformVersion)_linux_amd64.zip
+
+                sudo mv terraform /usr/local/bin/terraform
+
+                terraform version
+
+          # --------------------------------------------------
+          # Azure Login Check
+          # --------------------------------------------------
+
+          - task: AzureCLI@2
+            displayName: 'Check Azure Login'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az account show
+
+          # --------------------------------------------------
+          # Terraform Init
+          # --------------------------------------------------
+
+          - task: AzureCLI@2
             displayName: 'Terraform Init'
             inputs:
-              command: 'init'
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               workingDirectory: '$(terraformWorkingDirectory)'
-              backendType: 'azurerm'
-              backendAzureRmSubscriptionId: 'YOUR-SUBSCRIPTION-ID'
-              backendAzureRmResourceGroupName: 'YOUR-TFSTATE-RG'
-              backendAzureRmStorageAccountName: 'YOUR-TFSTATE-STORAGE'
-              backendAzureRmContainerName: 'tfstate'
-              backendAzureRmKey: 'terraform.tfstate'
+              inlineScript: |
+                terraform init -input=false
 
-          - task: TerraformCLI@2
+          # --------------------------------------------------
+          # Terraform Validate
+          # --------------------------------------------------
+
+          - task: AzureCLI@2
             displayName: 'Terraform Validate'
             inputs:
-              command: 'validate'
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               workingDirectory: '$(terraformWorkingDirectory)'
+              inlineScript: |
+                terraform validate
 
-          - task: TerraformCLI@2
+          # --------------------------------------------------
+          # Terraform Apply
+          # --------------------------------------------------
+
+          - task: AzureCLI@2
             displayName: 'Terraform Apply'
             inputs:
-              command: 'apply'
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
               workingDirectory: '$(terraformWorkingDirectory)'
-              environmentServiceNameAzureRM: '$(azureServiceConnection)'
-              commandOptions: '-var-file=terraform.tfvars -auto-approve'
+              inlineScript: |
+                terraform apply \
+                  -input=false \
+                  -auto-approve \
+                  -var-file=terraform.tfvars
